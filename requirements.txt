@@ -1,0 +1,12 @@
+# For Google Gemini AI
+google-generativeai
+
+# For Binance Exchange API
+python-binance
+
+# For loading .env files
+python-dotenv
+
+# For PostgreSQL database connection
+# Use psycopg2-binary for easier installation as it includes precompiled binaries
+psycopg2-binary
