@@ -34,4 +34,4 @@ Flask
 numpy 
 # (La versión específica de numpy podría ser relevante si tienes problemas de compatibilidad,
 # pero usualmente pip maneja bien las dependencias transitivas)
-
+setuptools

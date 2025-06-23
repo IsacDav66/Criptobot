@@ -7,7 +7,9 @@ import psycopg2
 import psycopg2.extras
 from datetime import datetime
 import decimal
+from dotenv import load_dotenv # <--- AÑADIR
 
+load_dotenv()
 app = Flask(__name__)
 COMMAND_FILE = "web_command.txt"
 CHART_DATA_FILE = "chart_data.json"
@@ -443,6 +445,9 @@ def stream_all_data():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - WebApp - %(message)s')
-    if not DATABASE_URL_WEB:
+    if not DATABASE_URL_WEB: # DATABASE_URL_WEB se define como os.environ.get("DATABASE_URL_BOT")
         logging.error("DATABASE_URL_BOT (usada como DATABASE_URL_WEB) no está configurada. El historial no funcionará.")
-    app.run(debug=True, port=5000, use_reloader=False)
+    
+    # Cambiar 'debug=True' a 'debug=False' para un uso más prolongado.
+    # Para producción real, usar un servidor WSGI como Gunicorn.
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False) 
