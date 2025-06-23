@@ -1,12 +1,37 @@
 # For Google Gemini AI
-google-generativeai
+##google-generativeai
 
 # For Binance Exchange API
-python-binance
+##python-binance
 
 # For loading .env files
-python-dotenv
+##python-dotenv
 
 # For PostgreSQL database connection
 # Use psycopg2-binary for easier installation as it includes precompiled binaries
-psycopg2-binary
+##psycopg2-binary
+
+##pandas 
+##pandas_ta
+
+
+# Archivo: requirements.txt
+
+# Para el bot principal (gemini_bot.py)
+google-generativeai
+python-binance
+python-dotenv
+psycopg2-binary  # O psycopg2, si prefieres compilarlo. -binary es más fácil de instalar.
+pandas
+pandas-ta
+
+# Para la interfaz web (web_interface.py)
+Flask
+# psycopg2-binary ya está listado arriba, Flask también lo usa para la BD del historial.
+
+# NumPy es una dependencia de pandas y pandas-ta, pero es bueno listarlo explícitamente
+# si usas alguna función directa o para asegurar la compatibilidad.
+numpy 
+# (La versión específica de numpy podría ser relevante si tienes problemas de compatibilidad,
+# pero usualmente pip maneja bien las dependencias transitivas)
+
