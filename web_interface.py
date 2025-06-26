@@ -1,5 +1,5 @@
 import logging
-from flask import Flask, render_template_string, request, redirect, url_for, Response, jsonify
+from flask import Flask, render_template_string, request, redirect, url_for, Response, jsonify, Blueprint 
 import os
 import json
 import time
@@ -19,6 +19,9 @@ BASE_ASSET_UI = "BTC"
 QUOTE_ASSET_UI = "USDT"
 DEFAULT_CHECK_INTERVAL_FOR_TEMPLATE = 60 
 HISTORY_LIMIT = 10
+
+# Crear un Blueprint para todas nuestras rutas del bot con el prefijo /bot
+bot_api = Blueprint('bot_api', __name__, url_prefix='/bot')
 
 HTML_TEMPLATE = """
 <!doctype html>
@@ -316,11 +319,18 @@ HTML_TEMPLATE = """
 </html>
 """
 
-# --- Python Flask code ---
+
+# --- Funciones Helper ---
+
 def get_db_connection_web():
-    if not DATABASE_URL_WEB: logging.warning("DATABASE_URL_WEB no configurada."); return None
-    try: return psycopg2.connect(DATABASE_URL_WEB)
-    except Exception as e: logging.error(f"Error conectando a BD desde la web: {e}"); return None
+    if not DATABASE_URL_WEB: 
+        logging.warning("DATABASE_URL_WEB no configurada.")
+        return None
+    try: 
+        return psycopg2.connect(DATABASE_URL_WEB)
+    except Exception as e: 
+        logging.error(f"Error conectando a BD desde la web: {e}")
+        return None
 
 def fetch_history_from_db(limit=HISTORY_LIMIT):
     history = []
@@ -334,12 +344,10 @@ def fetch_history_from_db(limit=HISTORY_LIMIT):
                         precio_ejecutado, cantidad_base_ejecutada, costo_total_usdt, 
                         tipo_orden_ia, ganancia_perdida_operacion_usdt, orderid_abierta
                     FROM trading_log 
-                    ORDER BY id DESC -- Ordenar por ID descendente para obtener los más recientes
+                    ORDER BY id DESC 
                     LIMIT %s
-                """, (limit,)) # El ORDER BY timestamp DESC es más correcto para "últimas"
+                """, (limit,))
                 rows = cur.fetchall()
-                # Invertir el orden para mostrar el más reciente al final (o como prefieras)
-                # Por ahora, tal como viene de la BD (más reciente primero)
                 for row_data in rows:
                     processed_row = {}
                     for key, value in dict(row_data).items():
@@ -348,7 +356,7 @@ def fetch_history_from_db(limit=HISTORY_LIMIT):
                         elif isinstance(value, datetime):
                              processed_row[key] = value.isoformat()
                         else:
-                            processed_row[key] = value if value is not None else None # Asegurar que None se maneje bien
+                            processed_row[key] = value
                     history.append(processed_row)
         except Exception as e:
             logging.error(f"Error obteniendo historial de BD: {e}")
@@ -369,21 +377,6 @@ def get_command_file_status():
         except Exception as e: logging.error(f"Error leyendo {COMMAND_FILE}: {e}"); return "Error."
     return None
 
-@app.route('/', methods=['GET'])
-def index():
-    return render_template_string(HTML_TEMPLATE, 
-                                  COMMAND_FILE=COMMAND_FILE,
-                                  BASE_ASSET=BASE_ASSET_UI,
-                                  QUOTE_ASSET=QUOTE_ASSET_UI,
-                                  DEFAULT_CHECK_INTERVAL=DEFAULT_CHECK_INTERVAL_FOR_TEMPLATE,
-                                  HISTORY_LIMIT=HISTORY_LIMIT)
-
-@app.route('/command', methods=['POST'])
-def send_command():
-    command_from_form = request.form.get('command')
-    if command_from_form: write_command(command_from_form)
-    return redirect(url_for('index'))
-
 def read_json_file(filepath, default_value):
     if os.path.exists(filepath):
         try:
@@ -396,19 +389,38 @@ def read_json_file(filepath, default_value):
             return default_value
     return default_value
 
-@app.route('/get_initial_data')
+# --- Rutas de la Aplicación (usando el Blueprint) ---
+
+@bot_api.route('/', methods=['GET'])
+def index():
+    # El HTML_TEMPLATE debe estar definido fuera de esta función, globalmente o importado.
+    return render_template_string(HTML_TEMPLATE, 
+                                  COMMAND_FILE=COMMAND_FILE,
+                                  BASE_ASSET=BASE_ASSET_UI,
+                                  QUOTE_ASSET=QUOTE_ASSET_UI,
+                                  DEFAULT_CHECK_INTERVAL=DEFAULT_CHECK_INTERVAL_FOR_TEMPLATE,
+                                  HISTORY_LIMIT=HISTORY_LIMIT)
+
+@bot_api.route('/command', methods=['POST'])
+def send_command():
+    command_from_form = request.form.get('command')
+    if command_from_form: write_command(command_from_form)
+    # Redirigir a la página principal del blueprint
+    return redirect(url_for('bot_api.index'))
+
+@bot_api.route('/get_initial_data')
 def get_initial_data():
     chart_data = read_json_file(CHART_DATA_FILE, [])
     bot_status = read_json_file(BOT_STATUS_FILE, {})
     history_data = fetch_history_from_db() 
-    logging.info(f"Initial history data: {len(history_data)} items") # Log para ver cuántos items de historial se cargan
+    logging.info(f"Initial data request: {len(history_data)} history items")
     return jsonify({
         "chart_data": chart_data, 
         "bot_status": bot_status,
         "history_data": history_data 
     })
 
-@app.route('/stream_all_data')
+@bot_api.route('/stream_all_data')
 def stream_all_data():
     def event_stream():
         last_chart_data_str = ""; last_bot_status_str = ""; last_command_file_status = ""; last_history_str = ""
@@ -443,11 +455,16 @@ def stream_all_data():
             time.sleep(2)
     return Response(event_stream(), mimetype="text/event-stream")
 
+# --- Registro del Blueprint y Ejecución ---
+
+# Registrar el Blueprint en la aplicación principal de Flask
+app.register_blueprint(bot_api)
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - WebApp - %(message)s')
-    if not DATABASE_URL_WEB: # DATABASE_URL_WEB se define como os.environ.get("DATABASE_URL_BOT")
+    if not DATABASE_URL_WEB:
         logging.error("DATABASE_URL_BOT (usada como DATABASE_URL_WEB) no está configurada. El historial no funcionará.")
     
-    # Cambiar 'debug=True' a 'debug=False' para un uso más prolongado.
-    # Para producción real, usar un servidor WSGI como Gunicorn.
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False) 
+    # Escuchar solo localmente para que Nginx actúe como proxy inverso
+    # Si quieres seguir accediendo por IP:5000 directamente, mantenlo en '0.0.0.0'
+    app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
