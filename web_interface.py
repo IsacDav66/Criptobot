@@ -462,7 +462,7 @@ def stream_all_data():
 # --- REGISTRO DEL BLUEPRINT Y EJECUCIÓN ---
 
 # Registrar el Blueprint en la aplicación principal
-app.register_blueprint(bot_api, url_prefix='/bot')
+app.register_blueprint(bot_api) 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - WebApp - %(message)s')
