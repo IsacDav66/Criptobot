@@ -60,10 +60,10 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="header-controls">
-        <form method="POST" action="{{ url_for('send_command') }}"><input type="hidden" name="command" value="FORCE_BUY"><button type="submit" class="btn btn-buy">Forzar COMPRA</button></form>
-        <form method="POST" action="{{ url_for('send_command') }}"><input type="hidden" name="command" value="FORCE_SELL"><button type="submit" class="btn btn-sell">Forzar VENTA</button></form>
-        <form method="POST" action="{{ url_for('send_command') }}"><input type="hidden" name="command" value="FORCE_IA_CONSULT"><button type="submit" class="btn btn-ia">Forzar CONSULTA IA</button></form>
-        <form method="POST" action="{{ url_for('send_command') }}"><input type="hidden" name="command" value="CLEAR_FORCED_ACTION"><button type="submit" class="btn btn-clear">Limpiar Acción</button></form>
+        <form method="POST" action="{{ url_for('bot_api.send_command') }}"><input type="hidden" name="command" value="FORCE_BUY"><button type="submit" class="btn btn-buy">Forzar COMPRA</button></form>
+        <form method="POST" action="{{ url_for('bot_api.send_command') }}"><input type="hidden" name="command" value="FORCE_SELL"><button type="submit" class="btn btn-sell">Forzar VENTA</button></form>
+        <form method="POST" action="{{ url_for('bot_api.send_command') }}"><input type="hidden" name="command" value="FORCE_IA_CONSULT"><button type="submit" class="btn btn-ia">Forzar CONSULTA IA</button></form>
+        <form method="POST" action="{{ url_for('bot_api.send_command') }}"><input type="hidden" name="command" value="CLEAR_FORCED_ACTION"><button type="submit" class="btn btn-clear">Limpiar Acción</button></form>
     </div>
     <div class="main-content">
         <div class="chart-container"><div id="tvchart"></div></div>
@@ -289,7 +289,7 @@ HTML_TEMPLATE = """
         window.addEventListener('resize', handleResize);
         handleResize(); 
 
-        fetch("{{ url_for('get_initial_data') }}")
+        fetch("{{ url_for('bot_api.get_initial_data') }}")
             .then(response => response.json())
             .then(data => {
                 console.log("Initial data fetched:", data); // LOG PARA VER DATOS INICIALES
@@ -301,7 +301,7 @@ HTML_TEMPLATE = """
             })
             .catch(err => { console.error("Error fetching initial data:", err); startCycleCountdown(); });
 
-        const sseCombined = new EventSource("{{ url_for('stream_all_data') }}");
+        const sseCombined = new EventSource("{{ url_for('bot_api.stream_all_data') }}");
         sseCombined.onmessage = function(event) {
             try {
                 const combinedData = JSON.parse(event.data);
