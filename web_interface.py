@@ -1,3 +1,5 @@
+# --- START OF FILE web_interface.py (CORREGIDO) ---
+
 import logging
 from flask import Flask, render_template_string, request, redirect, url_for, Response, jsonify, Blueprint 
 import os
@@ -7,10 +9,12 @@ import psycopg2
 import psycopg2.extras
 from datetime import datetime
 import decimal
-from dotenv import load_dotenv # <--- AÑADIR
+from dotenv import load_dotenv
 
-load_dotenv()
-app = Flask(__name__)
+load_dotenv() 
+app = Flask(__name__) # Definir la app principal
+
+# --- CONSTANTES ---
 COMMAND_FILE = "web_command.txt"
 CHART_DATA_FILE = "chart_data.json"
 BOT_STATUS_FILE = "bot_status.json"
@@ -20,9 +24,11 @@ QUOTE_ASSET_UI = "USDT"
 DEFAULT_CHECK_INTERVAL_FOR_TEMPLATE = 60 
 HISTORY_LIMIT = 10
 
-# Crear un Blueprint para todas nuestras rutas del bot con el prefijo /bot
+# --- BLUEPRINT ---
+# Crear un Blueprint SIN prefijo de URL. Nginx se encargará del prefijo.
 bot_api = Blueprint('bot_api', __name__)
 
+# --- HTML TEMPLATE (como antes, pero asegúrate que url_for esté correcto) ---
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="es">
@@ -60,6 +66,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="header-controls">
+        <!-- TODAS las llamadas a url_for ahora usan 'bot_api.function_name' -->
         <form method="POST" action="{{ url_for('bot_api.send_command') }}"><input type="hidden" name="command" value="FORCE_BUY"><button type="submit" class="btn btn-buy">Forzar COMPRA</button></form>
         <form method="POST" action="{{ url_for('bot_api.send_command') }}"><input type="hidden" name="command" value="FORCE_SELL"><button type="submit" class="btn btn-sell">Forzar VENTA</button></form>
         <form method="POST" action="{{ url_for('bot_api.send_command') }}"><input type="hidden" name="command" value="FORCE_IA_CONSULT"><button type="submit" class="btn btn-ia">Forzar CONSULTA IA</button></form>
@@ -318,10 +325,9 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+# (El contenido completo del HTML y JS lo omito por brevedad, pero asegúrate de que todas las llamadas a url_for usen 'bot_api.nombre_funcion')
 
-
-# --- Funciones Helper ---
-
+# --- FUNCIONES HELPER (sin cambios) ---
 def get_db_connection_web():
     if not DATABASE_URL_WEB: 
         logging.warning("DATABASE_URL_WEB no configurada.")
@@ -389,11 +395,10 @@ def read_json_file(filepath, default_value):
             return default_value
     return default_value
 
-# --- Rutas de la Aplicación (usando el Blueprint) ---
+# --- RUTAS DE LA APLICACIÓN (usando el Blueprint) ---
 
-@bot_api.route('/', methods=['GET'])
+@bot_api.route('/') # Esta será la raíz de la app Flask, ej. http://127.0.0.1:5000/
 def index():
-    # El HTML_TEMPLATE debe estar definido fuera de esta función, globalmente o importado.
     return render_template_string(HTML_TEMPLATE, 
                                   COMMAND_FILE=COMMAND_FILE,
                                   BASE_ASSET=BASE_ASSET_UI,
@@ -405,7 +410,6 @@ def index():
 def send_command():
     command_from_form = request.form.get('command')
     if command_from_form: write_command(command_from_form)
-    # Redirigir a la página principal del blueprint
     return redirect(url_for('bot_api.index'))
 
 @bot_api.route('/get_initial_data')
@@ -455,16 +459,13 @@ def stream_all_data():
             time.sleep(2)
     return Response(event_stream(), mimetype="text/event-stream")
 
-# --- Registro del Blueprint y Ejecución ---
+# --- REGISTRO DEL BLUEPRINT Y EJECUCIÓN ---
 
-# Registrar el Blueprint en la aplicación principal de Flask
-app.register_blueprint(bot_api)
+# Registrar el Blueprint en la aplicación principal
+app.register_blueprint(bot_api, url_prefix='/bot')
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - WebApp - %(message)s')
     if not DATABASE_URL_WEB:
-        logging.error("DATABASE_URL_BOT (usada como DATABASE_URL_WEB) no está configurada. El historial no funcionará.")
-    
-    # Escuchar solo localmente para que Nginx actúe como proxy inverso
-    # Si quieres seguir accediendo por IP:5000 directamente, mantenlo en '0.0.0.0'
-    app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
+        logging.error("DATABASE_URL_BOT no está configurada. El historial no funcionará.")
+    app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False) # Escuchar solo localmente
