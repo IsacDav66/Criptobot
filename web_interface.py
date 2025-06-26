@@ -21,7 +21,7 @@ DEFAULT_CHECK_INTERVAL_FOR_TEMPLATE = 60
 HISTORY_LIMIT = 10
 
 # Crear un Blueprint para todas nuestras rutas del bot con el prefijo /bot
-bot_api = Blueprint('bot_api', __name__, url_prefix='/bot')
+bot_api = Blueprint('bot_api', __name__)
 
 HTML_TEMPLATE = """
 <!doctype html>
